@@ -75,24 +75,6 @@ function FileUploadSettings({ block }: { block: FormBlock }) {
   return (
     <div className="space-y-4">
       <div>
-        <label className="text-sm font-medium block mb-1">Allowed File Types</label>
-        <select
-          multiple
-          value={block.allowedFileTypes || []}
-          onChange={(e) => {
-            const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
-            updateBlock(block.id, { allowedFileTypes: selected });
-          }}
-          className="w-full p-2 border rounded-md"
-        >
-          <option value="image/*">Images</option>
-          <option value="application/pdf">PDF</option>
-          <option value="application/msword">Word Documents</option>
-          <option value="text/plain">Text Files</option>
-          <option value="application/vnd.ms-excel">Excel Files</option>
-        </select>
-      </div>
-      <div>
         <label className="text-sm font-medium block mb-1">Maximum File Size (MB)</label>
         <input
           type="number"

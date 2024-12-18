@@ -132,10 +132,13 @@ export default function BlockContent({ block }: { block: FormBlock }) {
       );
 
     case 'fileUpload':
+      const maxSizeMB = ((block.maxFileSize || 0) / (1024 * 1024)).toFixed(0);
       return (
         <div className="border-2 border-dashed rounded-lg p-6 text-center bg-gray-50">
           <p className="text-gray-500">Drag and drop a file here, or click to select</p>
-          <p className="text-sm text-gray-400 mt-1">Maximum file size: 5MB</p>
+          <p className="text-sm text-gray-400 mt-1">
+            Maximum file size: {maxSizeMB} MB
+          </p>
         </div>
       );
 
