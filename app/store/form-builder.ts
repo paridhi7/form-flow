@@ -37,6 +37,8 @@ export interface FormBlock {
 interface FormBuilderStore {
   blocks: FormBlock[];
   selectedBlockId: string | null;
+  formTitle: string;
+  setFormTitle: (title: string) => void;
   addBlock: (type: BlockType) => string;
   updateBlock: (id: string, block: Partial<FormBlock>) => void;
   deleteBlock: (id: string) => void;
@@ -68,6 +70,8 @@ export const useFormBuilder = create<FormBuilderStore>((set) => ({
     }
   ],
   selectedBlockId: null,
+  formTitle: 'Untitled Form',
+  setFormTitle: (title) => set({ formTitle: title }),
   
   addBlock: (type) => {
     const newBlockId = crypto.randomUUID();
