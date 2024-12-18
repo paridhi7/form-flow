@@ -213,20 +213,37 @@ export default function RightSidebar() {
             placeholder="Add button text (optional)"
           />
         </div>
-        
-        <div>
-          <label className="flex items-center gap-2">
+
+        {block.isSpecial === 'thankYou' && (
+          <div>
+            <label className="text-sm font-medium block mb-1">Button URL</label>
             <input
-              type="checkbox"
-              checked={block.required}
+              type="url"
+              value={block.buttonUrl ?? 'formsunlimited.com'}
               onChange={(e) => useFormBuilder.getState().updateBlock(block.id, { 
-                required: e.target.checked 
+                buttonUrl: e.target.value || 'formsunlimited.com'
               })}
-              className="rounded border-gray-300"
+              className="w-full p-2 border rounded-md"
+              placeholder="Enter button URL"
             />
-            <span className="text-sm font-medium">Required field</span>
-          </label>
-        </div>
+          </div>
+        )}
+        
+        {!block.isSpecial && block.type !== 'statement' && (
+          <div>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={block.required}
+                onChange={(e) => useFormBuilder.getState().updateBlock(block.id, { 
+                  required: e.target.checked 
+                })}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm font-medium">Required field</span>
+            </label>
+          </div>
+        )}
       </div>
 
       {/* Block-specific Settings */}

@@ -33,6 +33,7 @@ interface SortableBlockItemProps {
   onSelect: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  isDeletable: boolean;
 }
 
 function SortableBlockItem({
@@ -43,6 +44,7 @@ function SortableBlockItem({
   onSelect,
   onDuplicate,
   onDelete,
+  isDeletable,
 }: SortableBlockItemProps) {
   const {
     attributes,
@@ -101,16 +103,18 @@ function SortableBlockItem({
               <Copy size={16} />
               <span>Duplicate</span>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="gap-2 text-red-600 focus:text-red-600"
-            >
-              <Trash2 size={16} />
-              <span>Delete</span>
-            </DropdownMenuItem>
+            {isDeletable && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="gap-2 text-red-600 focus:text-red-600"
+              >
+                <Trash2 size={16} />
+                <span>Delete</span>
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -145,9 +149,13 @@ export default function LeftSidebar() {
     }
   };
 
+  // Get non-thank you blocks for the sortable context
+  const regularBlocks = blocks.filter(b => b.isSpecial !== 'thankYou');
+  const thankYouBlock = blocks.find(b => b.isSpecial === 'thankYou');
+
   return (
     <>
-      <div className="w-64 border-r h-full p-4">
+      <div className="w-64 border-r h-full p-4 flex flex-col">
         <button
           onClick={() => setIsModalOpen(true)}
           className="w-full mb-4 bg-blue-500 text-white rounded-lg p-2 flex items-center justify-center gap-2 hover:bg-blue-600"
@@ -156,31 +164,53 @@ export default function LeftSidebar() {
           Add new block
         </button>
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={blocks.map(block => block.id)}
-            strategy={verticalListSortingStrategy}
+        <div className="flex-1 flex flex-col">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            <div className="space-y-2">
-              {blocks.map((block, index) => (
-                <SortableBlockItem
-                  key={block.id}
-                  id={block.id}
-                  index={index}
-                  question={block.question}
-                  isSelected={selectedBlockId === block.id}
-                  onSelect={() => setSelectedBlock(block.id)}
-                  onDuplicate={() => duplicateBlock(block.id)}
-                  onDelete={() => deleteBlock(block.id)}
-                />
-              ))}
+            <SortableContext
+              items={regularBlocks.map(block => block.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-2">
+                {regularBlocks.map((block, index) => (
+                  <SortableBlockItem
+                    key={block.id}
+                    id={block.id}
+                    index={index}
+                    question={block.question}
+                    isSelected={selectedBlockId === block.id}
+                    onSelect={() => setSelectedBlock(block.id)}
+                    onDuplicate={() => duplicateBlock(block.id)}
+                    onDelete={() => deleteBlock(block.id)}
+                    isDeletable={true} 
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+
+          {/* Thank you block with consistent gap */}
+          {thankYouBlock && (
+            <div className="mt-20 border-t pt-4">
+              <h3 className="text-sm font-medium mb-2">Thank you page</h3>
+              <div
+                className={`p-3 rounded-lg cursor-pointer ${
+                  selectedBlockId === thankYouBlock.id
+                    ? 'bg-blue-50 border-blue-500 border'
+                    : 'hover:bg-gray-50 border border-gray-200'
+                }`}
+                onClick={() => setSelectedBlock(thankYouBlock.id)}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="truncate">{thankYouBlock.question}</span>
+                </div>
+              </div>
             </div>
-          </SortableContext>
-        </DndContext>
+          )}
+        </div>
       </div>
 
       <BlockSelectionModal

@@ -14,12 +14,16 @@ export type BlockType =
   | 'date'
   | 'fileUpload';
 
+export type SpecialBlockType = 'welcome' | 'thankYou';
+
 export interface FormBlock {
   id: string;
   type: BlockType;
+  isSpecial?: SpecialBlockType;
   question: string;
   description?: string;
   buttonText?: string;
+  buttonUrl?: string;
   required: boolean;
   placeholder?: string;
   options?: string[];      // for singleSelect, multiSelect, dropdown
@@ -42,7 +46,27 @@ interface FormBuilderStore {
 }
 
 export const useFormBuilder = create<FormBuilderStore>((set) => ({
-  blocks: [],
+  blocks: [
+    {
+      id: crypto.randomUUID(),
+      type: 'statement',
+      isSpecial: 'welcome',
+      question: 'Hey there 😊',
+      description: 'Mind filling out this form?',
+      buttonText: "Let's start",
+      required: false
+    },
+    {
+      id: crypto.randomUUID(),
+      type: 'statement',
+      isSpecial: 'thankYou',
+      question: 'Thank you! 🙌🏻',
+      description: 'You may now close this window.',
+      buttonText: 'Create your own Forms (Unlimited)',
+      buttonUrl: 'formsunlimited.com',
+      required: false
+    }
+  ],
   selectedBlockId: null,
   
   addBlock: (type) => {
@@ -106,10 +130,15 @@ export const useFormBuilder = create<FormBuilderStore>((set) => ({
     })),
 
   deleteBlock: (id) =>
-    set((state) => ({
-      blocks: state.blocks.filter((b) => b.id !== id),
-      selectedBlockId: state.selectedBlockId === id ? null : state.selectedBlockId
-    })),
+    set((state) => {
+      const blockToDelete = state.blocks.find(b => b.id === id);
+      if (blockToDelete?.isSpecial === 'thankYou') return state;
+
+      return {
+        blocks: state.blocks.filter((b) => b.id !== id),
+        selectedBlockId: state.selectedBlockId === id ? null : state.selectedBlockId
+      };
+    }),
 
   setSelectedBlock: (id) =>
     set({ selectedBlockId: id }),
