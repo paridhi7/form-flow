@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { create } from 'zustand';
 
 export type BlockType = 
@@ -50,7 +51,7 @@ interface FormBuilderStore {
 export const useFormBuilder = create<FormBuilderStore>((set) => ({
   blocks: [
     {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       type: 'statement',
       isSpecial: 'welcome',
       question: 'Hey there 😊',
@@ -59,7 +60,7 @@ export const useFormBuilder = create<FormBuilderStore>((set) => ({
       required: false
     },
     {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       type: 'statement',
       isSpecial: 'thankYou',
       question: 'Thank you! 🙌🏻',
@@ -74,7 +75,7 @@ export const useFormBuilder = create<FormBuilderStore>((set) => ({
   setFormTitle: (title) => set({ formTitle: title }),
   
   addBlock: (type) => {
-    const newBlockId = crypto.randomUUID();
+    const newBlockId = uuidv4();
 
     const getDefaultQuestion = (type: BlockType) => {
       switch (type) {
@@ -154,7 +155,7 @@ export const useFormBuilder = create<FormBuilderStore>((set) => ({
 
       const newBlock = {
         ...blockToDuplicate,
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         question: `${blockToDuplicate.question} (Copy)`
       };
 
