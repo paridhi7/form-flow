@@ -28,20 +28,42 @@ model User {
   @@map("users")
 }
 
+model Theme {
+  id              String   @id @default(uuid())
+  name            String?  // For naming custom themes
+  backgroundColor String   @default("#ffffff")
+  questionColor   String   @default("#000000")
+  answerColor     String   @default("#000000")
+  buttonColor     String   @default("#292929")
+  buttonTextColor String   @default("#ffffff")
+  font            String   @default("Inter")
+  logo            String?
+  backgroundImage String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  forms           Form[]
+
+  @@map("themes")
+}
+
 model Form {
   id          String   @id @default(uuid())
   userId      String
+  themeId     String?  // Optional to allow forms without custom themes
   title       String
   description String?
-  settings    Json?    // For theme, branding, success message, etc.
+  settings    Json?    // Keep this for other form settings
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
-  user          User           @relation(fields: [userId], references: [id])
-  blocks        FormBlock[]
-  logic         FormLogic[]
-  responses     FormResponse[]
+  user        User        @relation(fields: [userId], references: [id])
+  theme       Theme?      @relation(fields: [themeId], references: [id])
+  blocks      FormBlock[]
+  logic       FormLogic[]
+  responses   FormResponse[]
 
   @@map("forms")
 }
