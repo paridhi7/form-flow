@@ -1,4 +1,3 @@
-'use client'
 
 import FormBuilder from "@/app/components/form-builder/FormBuilder";
 import { useParams } from "next/navigation";

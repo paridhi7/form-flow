@@ -2,22 +2,24 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { formSchema } from '../route'
+import { authOptions } from '../../auth/[...nextauth]/options'
+import { formSchema } from '@/app/lib/validations/form'
 
 // GET /api/forms/[formId] - Get a single form
 export async function GET(
   request: NextRequest,
-  { params }: { params: { formId: string } }
+  { params }: { params: Promise<{ formId: string }> }
 ) {
   try {
-    const session = await getServerSession()
+    const formId = (await params).formId
+    const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const form = await prisma.form.findFirst({
       where: {
-        id: params.formId,
+        id: formId,
         user: {
           email: session.user.email
         }
@@ -48,10 +50,11 @@ export async function GET(
 // PUT /api/forms/[formId] - Update a form
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { formId: string } }
+  { params }: { params: Promise<{ formId: string }> }
 ) {
   try {
-    const session = await getServerSession()
+    const formId = (await params).formId
+    const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -62,7 +65,7 @@ export async function PUT(
     // First verify ownership
     const existingForm = await prisma.form.findFirst({
       where: {
-        id: params.formId,
+        id: formId,
         user: {
           email: session.user.email
         }
@@ -77,12 +80,12 @@ export async function PUT(
     const updatedForm = await prisma.$transaction(async (tx) => {
       // Delete existing blocks
       await tx.formBlock.deleteMany({
-        where: { formId: params.formId }
+        where: { formId: formId }
       })
 
       // Update form and create new blocks
       return tx.form.update({
-        where: { id: params.formId },
+        where: { id: formId },
         data: {
           title: validatedData.title,
           description: validatedData.description,
@@ -135,10 +138,11 @@ export async function PUT(
 // DELETE /api/forms/[formId] - Delete a form
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { formId: string } }
+  { params }: { params: Promise<{ formId: string }> }
 ) {
   try {
-    const session = await getServerSession()
+    const formId = (await params).formId
+    const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -146,7 +150,7 @@ export async function DELETE(
     // Verify ownership before deletion
     const form = await prisma.form.findFirst({
       where: {
-        id: params.formId,
+        id: formId,
         user: {
           email: session.user.email
         }
@@ -159,7 +163,7 @@ export async function DELETE(
 
     // Delete the form (cascade will handle related records)
     await prisma.form.delete({
-      where: { id: params.formId }
+      where: { id: formId }
     })
 
     return NextResponse.json({ success: true })
