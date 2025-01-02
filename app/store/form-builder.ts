@@ -46,6 +46,7 @@ interface FormBuilderStore {
   setSelectedBlock: (id: string | null) => void;
   duplicateBlock: (id: string) => void;
   reorderBlocks: (activeId: string, overId: string) => void;
+  setInitialFormState: (data: { title: string; blocks: FormBlock[] }) => void;
 }
 
 export const useFormBuilder = create<FormBuilderStore>((set) => ({
@@ -182,6 +183,16 @@ export const useFormBuilder = create<FormBuilderStore>((set) => ({
       return {
         blocks: newBlocks
       };
+    });
+  },
+
+  setInitialFormState: (data) => {
+    set({
+      formTitle: data.title,
+      blocks: data.blocks.map(block => ({
+        ...block,
+        id: block.id || uuidv4() // Ensure each block has an ID
+      }))
     });
   }
 }));
