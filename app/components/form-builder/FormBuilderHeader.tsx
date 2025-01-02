@@ -1,22 +1,39 @@
-import { useFormBuilder } from "@/app/store/form-builder";
+import { FormBlock } from "@/app/store/form-builder";
 import { Link2, Send } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-export default function FormBuilderHeader({ formId }: { formId: string }) {
-  const { formTitle, setFormTitle } = useFormBuilder();
+interface FormBuilderHeaderProps {
+  formId: string;
+  saveStatus: 'saved' | 'saving' | 'error' | 'idle';
+  onSave: (data: { title: string; blocks: FormBlock[] }) => Promise<void>;
+  initialTitle: string;
+}
+
+export default function FormBuilderHeader({ saveStatus, onSave, initialTitle }: FormBuilderHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editableTitle, setEditableTitle] = useState(formTitle);
+  const [title, setTitle] = useState(initialTitle);
 
-  const handleTitleSubmit = () => {
-    setFormTitle(editableTitle.trim() || 'Untitled Form');
+  // Update title when initialTitle changes
+  useEffect(() => {
+    setTitle(initialTitle);
+  }, [initialTitle]);
+
+  const handleTitleSubmit = async () => {
+    const newTitle = title.trim() || 'My Form';
+    setTitle(newTitle);
     setIsEditing(false);
+    
+    await onSave({
+      title: newTitle,
+      blocks: []  // This will be filled in by the parent component
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleTitleSubmit();
     } else if (e.key === 'Escape') {
-      setEditableTitle(formTitle);
+      setTitle(initialTitle);
       setIsEditing(false);
     }
   };
@@ -27,8 +44,8 @@ export default function FormBuilderHeader({ formId }: { formId: string }) {
         {isEditing ? (
           <input
             type="text"
-            value={editableTitle}
-            onChange={(e) => setEditableTitle(e.target.value)}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
             onBlur={handleTitleSubmit}
             onKeyDown={handleKeyDown}
             className="font-semibold bg-transparent border-b border-gray-300 focus:border-gray-500 outline-none px-0"
@@ -39,10 +56,10 @@ export default function FormBuilderHeader({ formId }: { formId: string }) {
             className="font-semibold cursor-pointer hover:text-gray-600"
             onClick={() => {
               setIsEditing(true);
-              setEditableTitle(formTitle);
+              setTitle(initialTitle);
             }}
           >
-            {formTitle}
+            {title}
           </h1>
         )}
         
@@ -50,7 +67,13 @@ export default function FormBuilderHeader({ formId }: { formId: string }) {
           <button className="px-3 py-1 rounded hover:bg-gray-100">Build</button>
           <button className="px-3 py-1 rounded hover:bg-gray-100 text-gray-500">Design</button>
         </div>
-        <div className="hidden">{formId}</div>
+
+        {/* Save status indicator */}
+        <div className="text-sm">
+          {saveStatus === 'saving' && <span className="text-gray-500">Saving...</span>}
+          {saveStatus === 'saved' && <span className="text-green-600">Saved</span>}
+          {saveStatus === 'error' && <span className="text-red-600">Save failed</span>}
+        </div>
       </div>
 
       <div className="flex items-center gap-2">

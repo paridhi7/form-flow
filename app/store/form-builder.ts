@@ -72,7 +72,7 @@ export const useFormBuilder = create<FormBuilderStore>((set) => ({
     }
   ],
   selectedBlockId: null,
-  formTitle: 'Untitled Form',
+  formTitle: 'My Form',
   setFormTitle: (title) => set({ formTitle: title }),
   
   addBlock: (type) => {
