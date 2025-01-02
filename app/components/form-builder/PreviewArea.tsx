@@ -36,7 +36,7 @@ export default function PreviewArea() {
       {blocks.length > 0 && !isThankYouSelected && (
         <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white px-4 py-2 rounded-full shadow-sm">
           <button
-            onClick={() => setSelectedBlock(regularBlocks[currentBlockIndex - 1]?.id)}
+            onClick={() => setSelectedBlock(regularBlocks[currentBlockIndex - 1]?.id || null)}
             disabled={currentBlockIndex <= 0}
             className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
           >
@@ -46,9 +46,8 @@ export default function PreviewArea() {
           <span className="text-sm text-gray-600">
             {currentBlockIndex + 1} of {regularBlocks.length}
           </span>
-          
           <button
-            onClick={() => setSelectedBlock(regularBlocks[currentBlockIndex + 1]?.id)}
+            onClick={() => setSelectedBlock(regularBlocks[currentBlockIndex + 1]?.id || null)}
             disabled={currentBlockIndex >= regularBlocks.length - 1}
             className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
           >
