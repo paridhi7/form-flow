@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { signIn } from "next-auth/react"
-import Image from "next/image"
+import { FcGoogle } from 'react-icons/fc'
 
 export default function SignIn() {
   return (
@@ -17,12 +17,7 @@ export default function SignIn() {
           className="w-full flex items-center justify-center gap-2"
           onClick={() => signIn('google', { callbackUrl: '/' })}
         >
-          <Image
-            src="/google.svg"
-            alt="Google"
-            width={20}
-            height={20}
-          />
+          <FcGoogle className="text-xl" />
           Sign in with Google
         </Button>
       </div>
