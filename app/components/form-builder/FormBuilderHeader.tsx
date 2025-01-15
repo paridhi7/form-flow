@@ -1,7 +1,7 @@
-import { FormBlock } from "@/app/store/form-builder";
-import { Link2, Send } from "lucide-react";
+import { FormBlock, useFormBuilder } from "@/app/store/form-builder";
+import { ChevronLeft, Link2, Send } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useFormBuilder } from "@/app/store/form-builder";
 
 interface FormBuilderHeaderProps {
   formId: string;
@@ -11,6 +11,7 @@ interface FormBuilderHeaderProps {
 }
 
 export default function FormBuilderHeader({ saveStatus, onSave, initialTitle }: FormBuilderHeaderProps) {
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const { setFormTitle } = useFormBuilder();
   const [title, setTitle] = useState(initialTitle);
@@ -46,7 +47,17 @@ export default function FormBuilderHeader({ saveStatus, onSave, initialTitle }: 
 
   return (
     <div className="h-14 border-b flex items-center px-4 justify-between">
-      <div className="flex items-center gap-8">
+      <div className="flex items-center">
+        <div className="flex items-center">
+          <button 
+            onClick={() => router.push('/dashboard')}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ChevronLeft size={24} className="text-gray-600" />
+          </button>
+          <div className="h-6 w-px bg-gray-200 mx-2" />
+        </div>
+
         {isEditing ? (
           <input
             type="text"
@@ -69,13 +80,13 @@ export default function FormBuilderHeader({ saveStatus, onSave, initialTitle }: 
           </h1>
         )}
         
-        <div className="flex items-center gap-1">
+        <div className="flex items-center ml-8">
           <button className="px-3 py-1 rounded hover:bg-gray-100">Build</button>
           <button className="px-3 py-1 rounded hover:bg-gray-100 text-gray-500">Design</button>
         </div>
 
         {/* Save status indicator */}
-        <div className="text-sm">
+        <div className="text-sm ml-8">
           {saveStatus === 'saving' && <span className="text-gray-500">Saving...</span>}
           {saveStatus === 'saved' && <span className="text-green-600">Saved</span>}
           {saveStatus === 'error' && <span className="text-red-600">Save failed</span>}
