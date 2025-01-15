@@ -47,6 +47,8 @@ interface FormBuilderStore {
   duplicateBlock: (id: string) => void;
   reorderBlocks: (activeId: string, overId: string) => void;
   setInitialFormState: (data: { title: string; blocks: FormBlock[] }) => void;
+  onSave?: (blocks: FormBlock[]) => Promise<void>;
+  setOnSave: (callback: (blocks: FormBlock[]) => Promise<void>) => void;
 }
 
 export const useFormBuilder = create<FormBuilderStore>((set) => ({
@@ -108,12 +110,16 @@ export const useFormBuilder = create<FormBuilderStore>((set) => ({
     return newBlockId;
   },
 
-  updateBlock: (id, block) =>
-    set((state) => ({
-      blocks: state.blocks.map((b) => 
-        b.id === id ? { ...b, ...block } : b
-      )
-    })),
+  updateBlock: (id: string, updates: Partial<FormBlock>) => set((state) => {
+    const newBlocks = state.blocks.map(block =>
+      block.id === id ? { ...block, ...updates } : block
+    );
+    
+    // Trigger save after update
+    state.onSave?.(newBlocks);
+    
+    return { blocks: newBlocks };
+  }),
 
   deleteBlock: (id) =>
     set((state) => {
@@ -207,5 +213,8 @@ export const useFormBuilder = create<FormBuilderStore>((set) => ({
       formTitle: data.title,
       blocks: finalBlocks
     });
-  }
+  },
+
+  onSave: undefined,
+  setOnSave: (callback) => set({ onSave: callback }),
 }));

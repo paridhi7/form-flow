@@ -24,7 +24,7 @@ type SaveStatus = 'saved' | 'saving' | 'error' | 'idle';
 
 export default function FormBuilder({ formId }: FormBuilderProps) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const { setInitialFormState } = useFormBuilder();
+  const { setInitialFormState, setOnSave } = useFormBuilder();
 
   // Setup save mutation
   const { mutateAsync: saveForm } = useMutation({
@@ -45,6 +45,17 @@ export default function FormBuilder({ formId }: FormBuilderProps) {
       setTimeout(() => setSaveStatus('idle'), 3000);
     },
   });
+
+  // Set up the save callback for the store
+  useEffect(() => {
+    setOnSave(async (blocks: FormBlock[]) => {
+      const currentTitle = useFormBuilder.getState().formTitle;
+      await saveForm({
+        title: currentTitle,
+        blocks: blocks
+      });
+    });
+  }, [saveForm, setOnSave]);
 
   // Setup form data fetch
   const { isLoading, data: formData } = useQuery<ApiForm, Error>({
