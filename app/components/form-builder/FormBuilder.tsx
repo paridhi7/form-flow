@@ -1,11 +1,11 @@
 'use client'
 
-import { BlockType, FormBlock, useFormBuilder } from "@/app/store/form-builder";
+import { FormBlock, useFormBuilder } from "@/app/store/form-builder";
+import { ApiForm } from "@/app/types/form";
 import { api } from "@/lib/api";
+import { transformApiFormToFormData } from "@/lib/transforms";
 import { useMutation, useQuery, UseQueryOptions } from "@tanstack/react-query";
-import debounce from "lodash/debounce";
-import { useCallback, useEffect, useState } from "react";
-import BlockSelectionModal from "./blocks/BlockSelectionModal";
+import { useEffect, useState } from "react";
 import FormBuilderHeader from "./FormBuilderHeader";
 import LeftSidebar from "./LeftSidebar";
 import PreviewArea from "./PreviewArea";
@@ -23,9 +23,8 @@ interface FormData {
 type SaveStatus = 'saved' | 'saving' | 'error' | 'idle';
 
 export default function FormBuilder({ formId }: FormBuilderProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const { addBlock, blocks, setInitialFormState } = useFormBuilder();
+  const { setInitialFormState } = useFormBuilder();
 
   // Setup save mutation
   const { mutateAsync: saveForm } = useMutation({
@@ -48,47 +47,37 @@ export default function FormBuilder({ formId }: FormBuilderProps) {
   });
 
   // Setup form data fetch
-  const { isLoading, data: formData } = useQuery<FormData, Error>({
+  const { isLoading, data: formData } = useQuery<ApiForm, Error>({
     queryKey: ['form', formId],
-    queryFn: () => api.getForm(formId),
-    enabled: !!formId,
-    onSuccess: (data: FormData) => {
-      setInitialFormState({
-        title: data.title,
-        blocks: data.blocks
-      });
-    }
-  } as UseQueryOptions<FormData, Error>);
-
-  // Create debounced save function for blocks only
-  const debouncedSave = useCallback(
-    () => {
-      const save = debounce(() => {
-        if (formData) {
-          saveForm({
-            title: formData.title,  // Use existing title
-            blocks  // Only blocks trigger auto-save
-          });
-        }
-      }, 2000);
-      save();
-      return save.cancel;
+    queryFn: async () => {
+      const data = await api.getForm(formId);
+      return data;
     },
-    [blocks, formData, saveForm]
-  );
+    staleTime: 0,
+  } as UseQueryOptions<ApiForm, Error>);
 
-  // Auto-save when blocks change
   useEffect(() => {
-    const cancelSave = debouncedSave();
-    return () => cancelSave();
-  }, [debouncedSave]);
+    if (formData) {
+      const transformedData = transformApiFormToFormData(formData);
+      setInitialFormState(transformedData);
+      
+      // Verify the store was updated
+      const currentState = useFormBuilder.getState();
+      console.log('Store state after update:', currentState);
+    }
+  }, [formData, setInitialFormState]);
 
-  const handleAddBlock = (type: BlockType) => {
-    addBlock(type);
-    setIsModalOpen(false);
+  const handleSaveBlocks = async (updatedBlocks: FormBlock[]) => {
+    if (!formData) return;
+
+    const currentTitle = useFormBuilder.getState().formTitle;
+    
+    await saveForm({
+      title: currentTitle,
+      blocks: updatedBlocks
+    });
   };
 
-  // Immediate save for title changes
   const handleSave = async (data: FormData) => {
     await saveForm(data);
   };
@@ -106,15 +95,12 @@ export default function FormBuilder({ formId }: FormBuilderProps) {
         initialTitle={formData.title || 'My Form'}
       />
       <div className="flex-1 flex">
-        <LeftSidebar />
+        <LeftSidebar 
+          onSaveBlocks={handleSaveBlocks}
+        />
         <PreviewArea />
         <RightSidebar />
       </div>
-      <BlockSelectionModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSelectBlock={handleAddBlock}
-      />
     </>
   );
 }

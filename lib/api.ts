@@ -1,4 +1,5 @@
 import { FormBlock } from "@/app/store/form-builder"
+import { ApiForm } from '@/app/types/form';
 
 export interface FormData {
   title: string
@@ -54,9 +55,9 @@ export const api = {
     return handleResponse(response)
   },
 
-  async getForm(formId: string) {
-    const response = await fetch(`/api/forms/${formId}`)
-    return handleResponse(response)
+  async getForm(formId: string): Promise<ApiForm> {
+    const response = await fetch(`/api/forms/${formId}`);
+    return handleResponse(response);
   },
 
   async getForms() {

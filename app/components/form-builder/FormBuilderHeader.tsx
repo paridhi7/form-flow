@@ -1,6 +1,7 @@
 import { FormBlock } from "@/app/store/form-builder";
 import { Link2, Send } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useFormBuilder } from "@/app/store/form-builder";
 
 interface FormBuilderHeaderProps {
   formId: string;
@@ -11,6 +12,7 @@ interface FormBuilderHeaderProps {
 
 export default function FormBuilderHeader({ saveStatus, onSave, initialTitle }: FormBuilderHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const { setFormTitle } = useFormBuilder();
   const [title, setTitle] = useState(initialTitle);
 
   // Update title when initialTitle changes
@@ -21,11 +23,15 @@ export default function FormBuilderHeader({ saveStatus, onSave, initialTitle }: 
   const handleTitleSubmit = async () => {
     const newTitle = title.trim() || 'My Form';
     setTitle(newTitle);
+    setFormTitle(newTitle);
     setIsEditing(false);
+    
+    // Get current blocks from the store
+    const currentBlocks = useFormBuilder.getState().blocks;
     
     await onSave({
       title: newTitle,
-      blocks: []  // This will be filled in by the parent component
+      blocks: currentBlocks  // Send current blocks instead of empty array
     });
   };
 

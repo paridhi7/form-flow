@@ -1,4 +1,4 @@
-import { useFormBuilder } from "@/app/store/form-builder";
+import { BlockType, FormBlock, useFormBuilder } from "@/app/store/form-builder";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,11 +8,10 @@ import {
 import {
   closestCenter,
   DndContext,
-  DragEndEvent,
   KeyboardSensor,
   PointerSensor,
   useSensor,
-  useSensors,
+  useSensors
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -122,7 +121,11 @@ function SortableBlockItem({
   );
 }
 
-export default function LeftSidebar() {
+interface LeftSidebarProps {
+  onSaveBlocks: (blocks: FormBlock[]) => Promise<void>;
+}
+
+export default function LeftSidebar({ onSaveBlocks }: LeftSidebarProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const {
     blocks,
@@ -141,11 +144,43 @@ export default function LeftSidebar() {
     })
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (over && active.id !== over.id) {
-      reorderBlocks(active.id as string, over.id as string);
+  const handleAddBlock = async (type: BlockType) => {
+    addBlock(type);
+    setIsModalOpen(false);
+
+    try {
+      const updatedBlocks = useFormBuilder.getState().blocks;
+      await onSaveBlocks(updatedBlocks);
+    } catch (error) {
+      console.error('Failed to save new block:', error);
+      // Optionally show an error toast/notification here
+    }
+  };
+
+  const handleReorder = async (activeId: string, overId: string) => {
+    reorderBlocks(activeId, overId);
+    // Save the reordered blocks
+    const updatedBlocks = useFormBuilder.getState().blocks;
+    await onSaveBlocks(updatedBlocks);
+  };
+
+  const handleDelete = async (blockId: string) => {
+    deleteBlock(blockId);
+    try {
+      const updatedBlocks = useFormBuilder.getState().blocks;
+      await onSaveBlocks(updatedBlocks);
+    } catch (error) {
+      console.error('Failed to save after delete:', error);
+    }
+  };
+
+  const handleDuplicate = async (blockId: string) => {
+    duplicateBlock(blockId);
+    try {
+      const updatedBlocks = useFormBuilder.getState().blocks;
+      await onSaveBlocks(updatedBlocks);
+    } catch (error) {
+      console.error('Failed to save after duplicate:', error);
     }
   };
 
@@ -168,7 +203,11 @@ export default function LeftSidebar() {
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
+            onDragEnd={({ active, over }) => {
+              if (over && active.id !== over.id) {
+                handleReorder(active.id as string, over.id as string);
+              }
+            }}
           >
             <SortableContext
               items={regularBlocks.map(block => block.id)}
@@ -183,8 +222,8 @@ export default function LeftSidebar() {
                     question={block.question}
                     isSelected={selectedBlockId === block.id}
                     onSelect={() => setSelectedBlock(block.id)}
-                    onDuplicate={() => duplicateBlock(block.id)}
-                    onDelete={() => deleteBlock(block.id)}
+                    onDuplicate={() => handleDuplicate(block.id)}
+                    onDelete={() => handleDelete(block.id)}
                     isDeletable={true} 
                   />
                 ))}
@@ -216,7 +255,7 @@ export default function LeftSidebar() {
       <BlockSelectionModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSelectBlock={addBlock}
+        onSelectBlock={handleAddBlock}
       />
     </>
   );

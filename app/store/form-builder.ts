@@ -50,27 +50,7 @@ interface FormBuilderStore {
 }
 
 export const useFormBuilder = create<FormBuilderStore>((set) => ({
-  blocks: [
-    {
-      id: uuidv4(),
-      type: 'statement',
-      isSpecial: 'welcome',
-      question: 'Hey there 😊',
-      description: 'Mind filling out this form?',
-      buttonText: "Let's start",
-      required: false
-    },
-    {
-      id: uuidv4(),
-      type: 'statement',
-      isSpecial: 'thankYou',
-      question: 'Thank you! 🙌🏻',
-      description: 'You may now close this window.',
-      buttonText: 'Create your own Forms (Unlimited)',
-      buttonUrl: 'formsunlimited.com',
-      required: false
-    }
-  ],
+  blocks: [],
   selectedBlockId: null,
   formTitle: 'My Form',
   setFormTitle: (title) => set({ formTitle: title }),
@@ -187,12 +167,45 @@ export const useFormBuilder = create<FormBuilderStore>((set) => ({
   },
 
   setInitialFormState: (data) => {
+    const blocks = [...data.blocks];
+
+    // Only add default special blocks if they don't exist
+    const hasWelcome = blocks.some(b => b.isSpecial === 'welcome');
+    const hasThankYou = blocks.some(b => b.isSpecial === 'thankYou');
+
+    const finalBlocks = [
+      // Keep existing blocks in their order
+      ...blocks,
+
+      // Add thank you block at the end if it doesn't exist
+      ...(!hasThankYou ? [{
+        id: uuidv4(),
+        type: 'statement' as const,
+        isSpecial: 'thankYou' as const,
+        question: 'Thank you! 🙌🏻',
+        description: 'You may now close this window.',
+        buttonText: 'Create your own Forms (Unlimited)',
+        buttonUrl: 'formsunlimited.com',
+        required: false
+      }] : [])
+    ];
+
+    // If no welcome block exists, add it at the beginning
+    if (!hasWelcome) {
+      finalBlocks.unshift({
+        id: uuidv4(),
+        type: 'statement' as const,
+        isSpecial: 'welcome' as const,
+        question: 'Hey there 😊',
+        description: 'Mind filling out this form?',
+        buttonText: "Let's start",
+        required: false
+      });
+    }
+
     set({
       formTitle: data.title,
-      blocks: data.blocks.map(block => ({
-        ...block,
-        id: block.id || uuidv4() // Ensure each block has an ID
-      }))
+      blocks: finalBlocks
     });
   }
 }));
