@@ -25,7 +25,7 @@ export default function DashboardPage() {
   return (
     <div className="px-28">
       <div className="border-b">
-        <div className="container flex h-14 items-center justify-between">
+        <div className="container flex h-14 mt-4 items-center justify-between">
           <Image 
             src="/logo.png" 
             alt="FormFlow" 
