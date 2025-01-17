@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 interface FormResponse {
-  [blockId: string]: string | string[] // string for text inputs, string[] for multi-select
+  [blockId: string]: string | string[] | File // Added File type
 }
 
 interface FormResponseState {
@@ -57,8 +57,8 @@ export const useFormResponse = create<FormResponseState>()(
       setResponse: (blockId: string, value: string | string[]) => {
         set((state) => ({
           responses: { ...state.responses, [blockId]: value },
-          isCurrentBlockValid: true // We'll add proper validation later
         }))
+        get().validateCurrentBlock()
       },
 
       goToNextBlock: () => {
@@ -78,11 +78,111 @@ export const useFormResponse = create<FormResponseState>()(
       validateCurrentBlock: () => {
         const { currentBlock, responses } = get()
         if (!currentBlock) return false
+        
+        // Statement blocks are always valid
+        if (currentBlock.type === 'statement') {
+          set({ isCurrentBlockValid: true })
+          return true
+        }
 
         const response = responses[currentBlock.id]
-        const isValid = currentBlock.required ? Boolean(response) : true
-        set({ isCurrentBlockValid: isValid })
-        return isValid
+
+        // Required field validation
+        if (currentBlock.required) {
+          // For multiSelect, check if at least one option is selected
+          if (currentBlock.type === 'multiSelect') {
+            const selections = response as string[] || []
+            if (selections.length === 0) {
+              set({ isCurrentBlockValid: false })
+              return false
+            }
+          }
+          // For singleSelect and text inputs, check if response exists
+          else if (!response || (typeof response === 'string' && response.trim() === '')) {
+            set({ isCurrentBlockValid: false })
+            return false
+          }
+        }
+
+        // Type-specific validation
+        if (response) {
+          switch (currentBlock.type) {
+            case 'shortText':
+            case 'longText':
+              if (currentBlock.maxLength && 
+                  typeof response === 'string' && 
+                  response.length > currentBlock.maxLength) {
+                set({ isCurrentBlockValid: false })
+                return false
+              }
+              break
+
+            case 'email':
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+              if (!emailRegex.test(response as string)) {
+                set({ isCurrentBlockValid: false })
+                return false
+              }
+              break
+
+            case 'phone':
+              const phoneRegex = /^\+?[\d\s-]{8,}$/
+              if (!phoneRegex.test(response as string)) {
+                set({ isCurrentBlockValid: false })
+                return false
+              }
+              break
+
+            case 'url':
+              try {
+                new URL(response as string)
+              } catch {
+                set({ isCurrentBlockValid: false })
+                return false
+              }
+              break
+
+            case 'number':
+              const numValue = Number(response)
+              if (isNaN(numValue)) {
+                set({ isCurrentBlockValid: false })
+                return false
+              }
+              if (currentBlock.minValue && numValue < currentBlock.minValue) {
+                set({ isCurrentBlockValid: false })
+                return false
+              }
+              if (currentBlock.maxValue && numValue > currentBlock.maxValue) {
+                set({ isCurrentBlockValid: false })
+                return false
+              }
+              break
+
+            case 'fileUpload':
+              const file = response as File
+              if (!file) {
+                set({ isCurrentBlockValid: false })
+                return false
+              }
+              if (currentBlock.maxFileSize && file.size > currentBlock.maxFileSize) {
+                set({ isCurrentBlockValid: false })
+                return false
+              }
+              break
+
+            case 'date':
+              const dateValue = new Date(response as string)
+              if (isNaN(dateValue.getTime())) {
+                set({ isCurrentBlockValid: false })
+                return false
+              }
+              break
+          }
+        }
+
+        // If we get here, the block is valid
+        set({ isCurrentBlockValid: true })
+        return true
       },
 
       submitForm: async () => {
