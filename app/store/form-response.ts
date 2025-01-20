@@ -18,14 +18,13 @@ interface FormResponseState {
   
   // Actions
   initializeForm: (formId: string, blocks: FormBlock[]) => void
-  setResponse: (blockId: string, value: string | string[]) => void
+  setResponse: (blockId: string, value: string | string[] | File) => void
   goToNextBlock: () => void
   goToPreviousBlock: () => void
   validateCurrentBlock: () => boolean
   submitForm: () => Promise<void>
   
   // Computed
-  currentBlock: FormBlock | null
   isLastBlock: boolean
   progress: number
 
@@ -51,10 +50,11 @@ export const useFormResponse = create<FormResponseState>()(
 
       // Actions
       initializeForm: (formId: string, blocks: FormBlock[]) => {
-        set({ formId, blocks, currentBlockIndex: 0, responses: {} })
+        set({ formId, blocks, currentBlockIndex: 0, responses: {}, isCurrentBlockValid: true })
+        console.log('Store state after init:', get())
       },
 
-      setResponse: (blockId: string, value: string | string[]) => {
+      setResponse: (blockId: string, value: string | string[] | File) => {
         set((state) => ({
           responses: { ...state.responses, [blockId]: value },
         }))
@@ -62,9 +62,24 @@ export const useFormResponse = create<FormResponseState>()(
       },
 
       goToNextBlock: () => {
-        const { currentBlockIndex, blocks, isCurrentBlockValid } = get()
-        if (isCurrentBlockValid && currentBlockIndex < blocks.length - 1) {
-          set({ currentBlockIndex: currentBlockIndex + 1 })
+        const state = get()
+        console.log('Going to next block:', {
+          currentIndex: state.currentBlockIndex,
+          totalBlocks: state.blocks.length,
+          isValid: state.isCurrentBlockValid
+        })
+        
+        if (state.isCurrentBlockValid && state.currentBlockIndex < state.blocks.length - 1) {
+          const newIndex = state.currentBlockIndex + 1
+          console.log('Setting new index:', newIndex)
+          
+          set(() => ({ 
+            currentBlockIndex: newIndex,
+            isCurrentBlockValid: false
+          }))
+
+          // Verify state update
+          console.log('State after update:', get())
         }
       },
 
@@ -76,7 +91,14 @@ export const useFormResponse = create<FormResponseState>()(
       },
 
       validateCurrentBlock: () => {
-        const { currentBlock, responses } = get()
+        const currentBlock = get().getCurrentBlock()
+        const responses = get().responses
+        console.log('Validating block:', {
+          currentBlock,
+          response: currentBlock ? responses[currentBlock.id] : null,
+          required: currentBlock?.required
+        })
+        
         if (!currentBlock) return false
         
         // Statement blocks are always valid
@@ -203,11 +225,6 @@ export const useFormResponse = create<FormResponseState>()(
       },
 
       // Computed properties
-      get currentBlock() {
-        const state = get()
-        return state.blocks[state.currentBlockIndex] || null
-      },
-
       get isLastBlock() {
         const state = get()
         return state.currentBlockIndex === state.blocks.length - 1

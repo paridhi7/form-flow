@@ -13,7 +13,7 @@ import { ArrowRight, Calendar } from 'lucide-react'
 interface ResponseBlockProps {
   block: FormBlock
   onNext: () => void
-  response?: string | string[]
+  response?: string | string[] | File
   onResponseChange?: (value: string | string[] | File) => void
 }
 
@@ -57,7 +57,7 @@ export function ResponseBlock({
           <p className="text-gray-600">{block.description}</p>
         )}
         <Input
-          value={response}
+          value={typeof response === 'string' ? response : ''}
           onChange={(e) => onResponseChange?.(e.target.value)}
           placeholder={block.placeholder}
           maxLength={block.maxLength}
@@ -78,7 +78,7 @@ export function ResponseBlock({
           <p className="text-gray-600">{block.description}</p>
         )}
         <Textarea
-          value={response}
+          value={typeof response === 'string' ? response : ''}
           onChange={(e) => onResponseChange?.(e.target.value)}
           placeholder={block.placeholder}
           maxLength={block.maxLength}

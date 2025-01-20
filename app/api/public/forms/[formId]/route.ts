@@ -11,11 +11,7 @@ export async function GET(
         id: (await params).formId,
       },
       include: {
-        blocks: {
-          orderBy: {
-            order: 'asc'
-          }
-        }
+        blocks: true
       }
     })
 
@@ -23,6 +19,19 @@ export async function GET(
       return NextResponse.json({ error: 'Form not found' }, { status: 404 })
     }
 
+    // First sort by original order
+    const sortedBlocks = [...form.blocks].sort((a, b) => a.order - b.order)
+    
+    // Find thank you block and move it to the end
+    const thankYouIndex = sortedBlocks.findIndex(block => block.isSpecial === 'thankYou')
+    if (thankYouIndex !== -1) {
+      const thankYouBlock = sortedBlocks.splice(thankYouIndex, 1)[0]
+      // Update its order to be after the last block
+      thankYouBlock.order = sortedBlocks.length
+      sortedBlocks.push(thankYouBlock)
+    }
+
+    form.blocks = sortedBlocks
     return NextResponse.json(form)
   } catch (error) {
     console.error('Error fetching form:', error)

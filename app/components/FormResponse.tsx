@@ -1,11 +1,11 @@
 'use client'
 
-import { FormBlock } from '@/app/types/form'
 import { useFormResponse } from '@/app/store/form-response'
-import { useEffect, useCallback, useState } from 'react'
+import { FormBlock } from '@/app/types/form'
 import { Progress } from '@/components/ui/progress'
-import { ChevronUp, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ChevronDown, ChevronUp } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { ResponseBlock } from './ResponseBlock'
 
 interface FormResponseProps {
@@ -18,21 +18,31 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
   const { 
     initializeForm, 
     getCurrentBlock,
+    formId: currentFormId,
     goToNextBlock,
     goToPreviousBlock,
     progress,
     isLastBlock,
     currentBlockIndex,
     validateCurrentBlock,
-    isCurrentBlockValid
+    isCurrentBlockValid,
+    setResponse,
+    responses
   } = useFormResponse()
 
   const currentBlock = getCurrentBlock()
 
-  // Initialize form on mount
+  // Only initialize if formId changes or not initialized
   useEffect(() => {
-    initializeForm(formId, initialBlocks)
-  }, [formId, initialBlocks, initializeForm])
+    if (formId !== currentFormId) {
+      console.log('Initializing new form:', formId)
+      initializeForm(formId, initialBlocks)
+    }
+  }, [formId, currentFormId, initialBlocks, initializeForm])
+
+  useEffect(() => {
+    console.log('Current block updated:', currentBlock)
+  }, [currentBlock])
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -60,6 +70,19 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
     setIsClient(true)
   }, [])
 
+  // Handle navigation to next block
+  const handleNext = () => {
+    console.log('Attempting to go to next block:', {
+      isValid: isCurrentBlockValid,
+      currentBlock,
+      currentResponse: currentBlock ? responses[currentBlock.id] : null
+    })
+    
+    if (validateCurrentBlock()) {
+      goToNextBlock()
+    }
+  }
+
   if (!isClient) {
     return null // Return null on server-side
   }
@@ -77,10 +100,11 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
           {currentBlock && (
             <ResponseBlock 
               block={currentBlock}
-              onNext={() => {
-                if (validateCurrentBlock()) {
-                  goToNextBlock()
-                }
+              onNext={handleNext}
+              response={responses[currentBlock.id]}
+              onResponseChange={(value) => {
+                setResponse(currentBlock.id, value)
+                validateCurrentBlock()
               }}
             />
           )}
@@ -107,11 +131,7 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
           
           {!isLastBlock && (
             <button
-              onClick={() => {
-                if (validateCurrentBlock()) {
-                  goToNextBlock()
-                }
-              }}
+              onClick={handleNext}
               className={cn(
                 "p-2 rounded-full transition-colors",
                 isCurrentBlockValid 
