@@ -8,32 +8,84 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowRight, Calendar } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { AlertTriangle, ArrowRight, Calendar, Check } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 
 interface ResponseBlockProps {
   block: FormBlock
   onNext: () => void
   response?: string | string[] | File
   onResponseChange?: (value: string | string[] | File) => void
+  isValid: boolean
+  validationMessage?: string
+  isLastBlock: boolean
 }
 
 export function ResponseBlock({ 
   block, 
   onNext, 
   response = '', 
-  onResponseChange 
+  onResponseChange,
+  isValid,
+  validationMessage,
+  isLastBlock
 }: ResponseBlockProps) {
-  // Common button component
-  const NextButton = () => (
-    <Button 
-      onClick={onNext}
-      className="mt-8 px-8"
-      size="lg"
-    >
-      <span>{block.buttonText || 'Continue'}</span>
-      <ArrowRight className="ml-2 h-4 w-4" />
-    </Button>
+  const phoneInputRef = useRef<HTMLInputElement>(null)
+  
+  useEffect(() => {
+    if (block.type === 'phone') {
+      phoneInputRef.current?.focus()
+    }
+  }, [block.type])
+
+  const showCmdEnterHint = ['longText', 'multiSelect', 'fileUpload'].includes(block.type)
+
+  // Validation message component
+  const ValidationMessage = () => (
+    !isValid && validationMessage ? (
+      <div className="flex items-center gap-2 text-red-500 bg-red-50 px-4 py-2 rounded-md">
+        <AlertTriangle className="h-4 w-4" />
+        <span>{validationMessage}</span>
+      </div>
+    ) : null
   )
+
+  // Common button component
+  const NextButton = () => {
+    const handleClick = () => {
+      if (block.isSpecial === 'thankYou' && block.buttonUrl) {
+        const url = block.buttonUrl.startsWith('http') 
+          ? block.buttonUrl 
+          : `https://${block.buttonUrl}`
+        window.open(url, '_blank', 'noopener,noreferrer')
+      } else {
+        onNext()
+      }
+    }
+  
+    return (
+      <div className={cn(
+        "flex items-center gap-2",
+        block.type === 'statement' ? "justify-center" : "" // Center align for statement blocks
+      )}>
+        <Button 
+          onClick={handleClick}
+          className="mt-8 px-8"
+          size="lg"
+        >
+          <span>{isLastBlock ? 'Submit' : block.buttonText || 'Continue'}</span>
+          {isLastBlock ? <Check className="ml-2 h-4 w-4" /> : <ArrowRight className="ml-2 h-4 w-4" />}
+        </Button>
+        {/* Hide enter span on thankYou blocks */}
+        {block.isSpecial !== 'thankYou' && (
+          <span className="text-sm text-slate-500 mt-8">
+            press {showCmdEnterHint ? "⌘ + Enter" : "Enter"} ↵
+          </span>
+        )}
+      </div>
+    )
+  }
 
   // Statement block
   if (block.type === 'statement') {
@@ -57,6 +109,7 @@ export function ResponseBlock({
           <p className="text-gray-600">{block.description}</p>
         )}
         <Input
+          autoFocus
           value={typeof response === 'string' ? response : ''}
           onChange={(e) => onResponseChange?.(e.target.value)}
           placeholder={block.placeholder}
@@ -64,6 +117,7 @@ export function ResponseBlock({
           required={block.required}
           className="mt-4"
         />
+        <ValidationMessage />
         <NextButton />
       </div>
     )
@@ -78,6 +132,7 @@ export function ResponseBlock({
           <p className="text-gray-600">{block.description}</p>
         )}
         <Textarea
+          autoFocus
           value={typeof response === 'string' ? response : ''}
           onChange={(e) => onResponseChange?.(e.target.value)}
           placeholder={block.placeholder}
@@ -85,6 +140,7 @@ export function ResponseBlock({
           required={block.required}
           className="mt-4 min-h-[150px]"
         />
+        <ValidationMessage />
         <NextButton />
       </div>
     )
@@ -110,6 +166,7 @@ export function ResponseBlock({
             </div>
           ))}
         </RadioGroup>
+        <ValidationMessage />
         <NextButton />
       </div>
     )
@@ -149,6 +206,7 @@ export function ResponseBlock({
             </div>
           ))}
         </div>
+        <ValidationMessage />
         <NextButton />
       </div>
     )
@@ -163,6 +221,7 @@ export function ResponseBlock({
           <p className="text-gray-600">{block.description}</p>
         )}
         <Input
+          autoFocus
           type="email"
           value={response as string}
           onChange={(e) => onResponseChange?.(e.target.value)}
@@ -170,6 +229,7 @@ export function ResponseBlock({
           required={block.required}
           className="mt-4"
         />
+        <ValidationMessage />
         <NextButton />
       </div>
     )
@@ -184,6 +244,7 @@ export function ResponseBlock({
           <p className="text-gray-600">{block.description}</p>
         )}
         <Input
+          autoFocus
           type="number"
           value={response as string}
           onChange={(e) => onResponseChange?.(e.target.value)}
@@ -193,6 +254,7 @@ export function ResponseBlock({
           max={block.maxValue}
           className="mt-4"
         />
+        <ValidationMessage />
         <NextButton />
       </div>
     )
@@ -211,6 +273,7 @@ export function ResponseBlock({
             <option>🇮🇳 +91</option>
           </select>
           <Input
+            ref={phoneInputRef}
             type="tel"
             value={response as string}
             onChange={(e) => onResponseChange?.(e.target.value)}
@@ -219,6 +282,7 @@ export function ResponseBlock({
             className="flex-1"
           />
         </div>
+        <ValidationMessage />
         <NextButton />
       </div>
     )
@@ -233,6 +297,7 @@ export function ResponseBlock({
           <p className="text-gray-600">{block.description}</p>
         )}
         <Input
+          autoFocus
           type="url"
           value={response as string}
           onChange={(e) => onResponseChange?.(e.target.value)}
@@ -240,6 +305,7 @@ export function ResponseBlock({
           required={block.required}
           className="mt-4"
         />
+        <ValidationMessage />
         <NextButton />
       </div>
     )
@@ -268,6 +334,7 @@ export function ResponseBlock({
             ))}
           </SelectContent>
         </Select>
+        <ValidationMessage />
         <NextButton />
       </div>
     )
@@ -290,6 +357,7 @@ export function ResponseBlock({
           />
           <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
         </div>
+        <ValidationMessage />
         <NextButton />
       </div>
     )
@@ -323,6 +391,7 @@ export function ResponseBlock({
             </p>
           </label>
         </div>
+        <ValidationMessage />
         <NextButton />
       </div>
     )
@@ -335,6 +404,7 @@ export function ResponseBlock({
       {block.description && (
         <p className="text-gray-600">{block.description}</p>
       )}
+      <ValidationMessage />
       <NextButton />
     </div>
   )

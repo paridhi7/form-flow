@@ -3,7 +3,6 @@
 import { useFormResponse } from '@/app/store/form-response'
 import { FormBlock } from '@/app/types/form'
 import { Progress } from '@/components/ui/progress'
-import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { ResponseBlock } from './ResponseBlock'
@@ -22,12 +21,12 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
     goToNextBlock,
     goToPreviousBlock,
     progress,
-    isLastBlock,
     currentBlockIndex,
     validateCurrentBlock,
     isCurrentBlockValid,
     setResponse,
-    responses
+    isLastBlock,
+    responses,
   } = useFormResponse()
 
   const currentBlock = getCurrentBlock()
@@ -46,6 +45,9 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Don't allow navigation on thankYou blocks
+    if (currentBlock?.isSpecial === 'thankYou') return
+
     if (e.key === 'Enter' && !e.shiftKey) {
       if (document.activeElement?.tagName === 'TEXTAREA') return
       if (validateCurrentBlock()) {
@@ -53,10 +55,12 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
       }
     } else if (e.key === 'ArrowUp') {
       goToPreviousBlock()
-    } else if (e.key === 'ArrowDown' && isCurrentBlockValid) {
-      goToNextBlock()
+    } else if (e.key === 'ArrowDown' && !isLastBlock) {
+      if (validateCurrentBlock()) {
+        goToNextBlock()
+      }
     }
-  }, [goToNextBlock, goToPreviousBlock, validateCurrentBlock, isCurrentBlockValid])
+  }, [goToNextBlock, goToPreviousBlock, validateCurrentBlock, currentBlock, isLastBlock])
 
   // Set up keyboard listeners
   useEffect(() => {
@@ -83,6 +87,14 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
     }
   }
 
+  const [validationMessage, setValidationMessage] = useState<string>()
+
+  const handleValidation = () => {
+    const result = validateCurrentBlock()
+    setValidationMessage(result.message)
+    return result.isValid
+  }
+
   if (!isClient) {
     return null // Return null on server-side
   }
@@ -104,43 +116,42 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
               response={responses[currentBlock.id]}
               onResponseChange={(value) => {
                 setResponse(currentBlock.id, value)
-                validateCurrentBlock()
+                handleValidation()
               }}
+              isValid={isCurrentBlockValid}
+              validationMessage={validationMessage}
+              isLastBlock={isLastBlock}
             />
           )}
         </div>
       </div>
 
       {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 flex justify-between items-center">
+      <div className="fixed bottom-8 left-8 right-8 flex justify-between items-center">
         {/* Powered by banner */}
-        <div className="text-sm text-gray-500">
-          Powered by Forms Unlimited
-        </div>
+        <a href="https://formsunlimited.com" target="_blank" rel="noopener noreferrer">
+          <div className="bg-slate-800 text-white text-xs py-2 px-4 rounded-md hover:bg-slate-700">
+            Powered by Forms Unlimited
+          </div>
+        </a>
 
-        {/* Navigation arrows */}
-        <div className="flex gap-2">
-          {currentBlockIndex > 0 && (
+        {/* Navigation arrows in dark container */}
+        <div className="rounded-md p-1 flex gap-1">
+          {currentBlockIndex > 0 && !currentBlock?.isSpecial && (
             <button
               onClick={goToPreviousBlock}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 bg-slate-800 hover:bg-slate-700 rounded-md transition-colors text-white"
             >
-              <ChevronUp className="w-5 h-5" />
+              <ChevronUp className="w-4 h-4" />
             </button>
           )}
           
-          {!isLastBlock && (
+          {!isLastBlock && !currentBlock?.isSpecial && (
             <button
               onClick={handleNext}
-              className={cn(
-                "p-2 rounded-full transition-colors",
-                isCurrentBlockValid 
-                  ? "hover:bg-gray-100" 
-                  : "opacity-50 cursor-not-allowed"
-              )}
-              disabled={!isCurrentBlockValid}
+              className="p-2 bg-slate-800 rounded-md transition-colors text-white hover:bg-slate-700"
             >
-              <ChevronDown className="w-5 h-5" />
+              <ChevronDown className="w-4 h-4" />
             </button>
           )}
         </div>

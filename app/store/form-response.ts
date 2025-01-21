@@ -1,9 +1,14 @@
-import { FormBlock } from '@/app/types/form'
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { FormBlock } from '@/app/types/form';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface FormResponse {
   [blockId: string]: string | string[] | File // Added File type
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  message?: string;
 }
 
 interface FormResponseState {
@@ -21,7 +26,7 @@ interface FormResponseState {
   setResponse: (blockId: string, value: string | string[] | File) => void
   goToNextBlock: () => void
   goToPreviousBlock: () => void
-  validateCurrentBlock: () => boolean
+  validateCurrentBlock: () => ValidationResult
   submitForm: () => Promise<void>
   
   // Computed
@@ -41,6 +46,7 @@ export const useFormResponse = create<FormResponseState>()(
       blocks: [],
       formId: null,
       isCurrentBlockValid: false,
+      isLastBlock: false,
 
       // Define as a selector instead of a getter
       getCurrentBlock: () => {
@@ -50,7 +56,14 @@ export const useFormResponse = create<FormResponseState>()(
 
       // Actions
       initializeForm: (formId: string, blocks: FormBlock[]) => {
-        set({ formId, blocks, currentBlockIndex: 0, responses: {}, isCurrentBlockValid: true })
+        set({ 
+          formId, 
+          blocks, 
+          currentBlockIndex: 0, 
+          responses: {}, 
+          isCurrentBlockValid: true,
+          isLastBlock: blocks.length === 1
+        })
         console.log('Store state after init:', get())
       },
 
@@ -63,34 +76,41 @@ export const useFormResponse = create<FormResponseState>()(
 
       goToNextBlock: () => {
         const state = get()
-        console.log('Going to next block:', {
+        console.log('Navigation State:', {
           currentIndex: state.currentBlockIndex,
           totalBlocks: state.blocks.length,
-          isValid: state.isCurrentBlockValid
+          isValid: state.isCurrentBlockValid,
+          isLastBlock: state.isLastBlock
         })
         
         if (state.isCurrentBlockValid && state.currentBlockIndex < state.blocks.length - 1) {
           const newIndex = state.currentBlockIndex + 1
-          console.log('Setting new index:', newIndex)
+          const isLastBlock = newIndex === state.blocks.length - 2
+          console.log('Updating to:', { newIndex, isLastBlock })
           
-          set(() => ({ 
+          set({ 
             currentBlockIndex: newIndex,
-            isCurrentBlockValid: false
-          }))
+            isCurrentBlockValid: false,
+            isLastBlock
+          })
 
           // Verify state update
-          console.log('State after update:', get())
+          console.log('Updated State:', get())
         }
       },
 
       goToPreviousBlock: () => {
-        const { currentBlockIndex } = get()
-        if (currentBlockIndex > 0) {
-          set({ currentBlockIndex: currentBlockIndex - 1 })
+        const state = get()
+        if (state.currentBlockIndex > 0) {
+          const newIndex = state.currentBlockIndex - 1
+          set({ 
+            currentBlockIndex: newIndex,
+            isLastBlock: newIndex === state.blocks.length - 2
+          })
         }
       },
 
-      validateCurrentBlock: () => {
+      validateCurrentBlock: (): ValidationResult => {
         const currentBlock = get().getCurrentBlock()
         const responses = get().responses
         console.log('Validating block:', {
@@ -99,12 +119,12 @@ export const useFormResponse = create<FormResponseState>()(
           required: currentBlock?.required
         })
         
-        if (!currentBlock) return false
+        if (!currentBlock) return { isValid: false, message: 'Invalid block' }
         
         // Statement blocks are always valid
         if (currentBlock.type === 'statement') {
           set({ isCurrentBlockValid: true })
-          return true
+          return { isValid: true }
         }
 
         const response = responses[currentBlock.id]
@@ -116,13 +136,13 @@ export const useFormResponse = create<FormResponseState>()(
             const selections = response as string[] || []
             if (selections.length === 0) {
               set({ isCurrentBlockValid: false })
-              return false
+              return { isValid: false, message: 'This field is required.' }
             }
           }
           // For singleSelect and text inputs, check if response exists
           else if (!response || (typeof response === 'string' && response.trim() === '')) {
             set({ isCurrentBlockValid: false })
-            return false
+            return { isValid: false, message: 'This field is required.' }
           }
         }
 
@@ -135,7 +155,10 @@ export const useFormResponse = create<FormResponseState>()(
                   typeof response === 'string' && 
                   response.length > currentBlock.maxLength) {
                 set({ isCurrentBlockValid: false })
-                return false
+                return { 
+                  isValid: false, 
+                  message: `Text cannot exceed ${currentBlock.maxLength} characters.`
+                }
               }
               break
 
@@ -143,7 +166,10 @@ export const useFormResponse = create<FormResponseState>()(
               const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
               if (!emailRegex.test(response as string)) {
                 set({ isCurrentBlockValid: false })
-                return false
+                return { 
+                  isValid: false, 
+                  message: 'Please enter a valid email address.'
+                }
               }
               break
 
@@ -151,7 +177,10 @@ export const useFormResponse = create<FormResponseState>()(
               const phoneRegex = /^\+?[\d\s-]{8,}$/
               if (!phoneRegex.test(response as string)) {
                 set({ isCurrentBlockValid: false })
-                return false
+                return { 
+                  isValid: false, 
+                  message: 'Please enter a valid phone number.'
+                }
               }
               break
 
@@ -160,7 +189,10 @@ export const useFormResponse = create<FormResponseState>()(
                 new URL(response as string)
               } catch {
                 set({ isCurrentBlockValid: false })
-                return false
+                return { 
+                  isValid: false, 
+                  message: 'Please enter a valid URL.'
+                }
               }
               break
 
@@ -168,15 +200,24 @@ export const useFormResponse = create<FormResponseState>()(
               const numValue = Number(response)
               if (isNaN(numValue)) {
                 set({ isCurrentBlockValid: false })
-                return false
+                return { 
+                  isValid: false, 
+                  message: 'Please enter a valid number.'
+                }
               }
               if (currentBlock.minValue && numValue < currentBlock.minValue) {
                 set({ isCurrentBlockValid: false })
-                return false
+                return { 
+                  isValid: false, 
+                  message: `Value must be greater than or equal to ${currentBlock.minValue}.`
+                }
               }
               if (currentBlock.maxValue && numValue > currentBlock.maxValue) {
                 set({ isCurrentBlockValid: false })
-                return false
+                return { 
+                  isValid: false, 
+                  message: `Value must be less than or equal to ${currentBlock.maxValue}.`
+                }
               }
               break
 
@@ -184,11 +225,17 @@ export const useFormResponse = create<FormResponseState>()(
               const file = response as File
               if (!file) {
                 set({ isCurrentBlockValid: false })
-                return false
+                return { 
+                  isValid: false, 
+                  message: 'Please upload a file.'
+                }
               }
               if (currentBlock.maxFileSize && file.size > currentBlock.maxFileSize) {
                 set({ isCurrentBlockValid: false })
-                return false
+                return { 
+                  isValid: false, 
+                  message: `File size exceeds maximum limit of ${currentBlock.maxFileSize}MB.`
+                }
               }
               break
 
@@ -196,7 +243,10 @@ export const useFormResponse = create<FormResponseState>()(
               const dateValue = new Date(response as string)
               if (isNaN(dateValue.getTime())) {
                 set({ isCurrentBlockValid: false })
-                return false
+                return { 
+                  isValid: false, 
+                  message: 'Please enter a valid date.'
+                }
               }
               break
           }
@@ -204,7 +254,7 @@ export const useFormResponse = create<FormResponseState>()(
 
         // If we get here, the block is valid
         set({ isCurrentBlockValid: true })
-        return true
+        return { isValid: true }
       },
 
       submitForm: async () => {
@@ -222,12 +272,6 @@ export const useFormResponse = create<FormResponseState>()(
           // Handle error (we'll add this later)
           console.error('Failed to submit form:', error)
         }
-      },
-
-      // Computed properties
-      get isLastBlock() {
-        const state = get()
-        return state.currentBlockIndex === state.blocks.length - 1
       },
 
       get progress() {
