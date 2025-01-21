@@ -6,12 +6,19 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { 
+  Select as SelectPrimitive,
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import type { CountryCode } from 'libphonenumber-js'
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js'
 import { AlertTriangle, ArrowRight, Calendar, Check, X } from 'lucide-react'
+import Select, { SingleValue } from 'react-select'
 
 interface ResponseBlockProps {
   block: FormBlock
@@ -33,7 +40,7 @@ export function ResponseBlock({
   isLastBlock
 }: ResponseBlockProps) {
 
-  const showCmdEnterHint = ['longText', 'dropdown', 'fileUpload'].includes(block.type)
+  const showCmdEnterHint = ['longText', 'dropdown', 'phone', 'fileUpload'].includes(block.type)
 
   // Validation message component
   const ValidationMessage = () => (
@@ -95,6 +102,16 @@ export function ResponseBlock({
       .split('')
       .map(char => 127397 + char.charCodeAt(0))
     return String.fromCodePoint(...codePoints)
+  }
+
+  // Add this helper to get full country names
+  const getCountryName = (countryCode: string) => {
+    const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
+    try {
+      return regionNames.of(countryCode)
+    } catch {
+      return countryCode
+    }
   }
 
   // Statement block
@@ -273,6 +290,10 @@ export function ResponseBlock({
   // Phone input
   if (block.type === 'phone') {
     const countries = getCountries()
+    const options = countries.map(country => ({
+      value: country,
+      label: `${getCountryFlag(country)} ${getCountryName(country)} +${getCountryCallingCode(country as CountryCode)}`
+    }))
     
     return (
       <div className="space-y-6">
@@ -281,20 +302,16 @@ export function ResponseBlock({
           <p className="text-gray-600">{block.description}</p>
         )}
         <div className="flex gap-2 items-center">
-          <select 
-            className="p-2 border rounded-md bg-white w-[120px]"
-            value={(response as string)?.split('-')[0] || 'IN'}
-            onChange={(e) => {
+          <Select
+            className="w-[200px]"
+            options={options}
+            value={options.find(opt => opt.value === ((response as string)?.split('-')[0] || 'IN'))}
+            onChange={(selected: SingleValue<{ value: string, label: string }>) => {
               const number = (response as string)?.split('-')[1] || ''
-              onResponseChange?.(`${e.target.value}-${number}`)
+              onResponseChange?.(`${selected?.value}-${number}`)
             }}
-          >
-            {countries.map((country) => (
-              <option key={country} value={country}>
-                {getCountryFlag(country)} +{getCountryCallingCode(country as CountryCode)}
-              </option>
-            ))}
-          </select>
+            isSearchable={true}
+          />
           <Input
             autoFocus
             type="tel"
@@ -311,6 +328,7 @@ export function ResponseBlock({
         <ValidationMessage />
         <NextButton />
       </div>
+    
     )
   }
 
@@ -345,7 +363,7 @@ export function ResponseBlock({
         {block.description && (
           <p className="text-gray-600">{block.description}</p>
         )}
-        <Select 
+        <SelectPrimitive 
           value={response as string} 
           onValueChange={(value) => onResponseChange?.(value)}
         >
@@ -359,7 +377,7 @@ export function ResponseBlock({
               </SelectItem>
             ))}
           </SelectContent>
-        </Select>
+        </SelectPrimitive>
         <ValidationMessage />
         <NextButton />
       </div>
