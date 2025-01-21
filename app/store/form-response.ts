@@ -1,9 +1,11 @@
 import { FormBlock } from '@/app/types/form';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { isValidPhoneNumber } from 'libphonenumber-js'
+import type { CountryCode } from 'libphonenumber-js'
 
 interface FormResponse {
-  [blockId: string]: string | string[] | File // Added File type
+  [blockId: string]: string | string[] | File | null
 }
 
 interface ValidationResult {
@@ -76,26 +78,31 @@ export const useFormResponse = create<FormResponseState>()(
 
       goToNextBlock: () => {
         const state = get()
-        console.log('Navigation State:', {
-          currentIndex: state.currentBlockIndex,
-          totalBlocks: state.blocks.length,
-          isValid: state.isCurrentBlockValid,
-          isLastBlock: state.isLastBlock
-        })
-        
         if (state.isCurrentBlockValid && state.currentBlockIndex < state.blocks.length - 1) {
           const newIndex = state.currentBlockIndex + 1
-          const isLastBlock = newIndex === state.blocks.length - 2
-          console.log('Updating to:', { newIndex, isLastBlock })
+          const currentBlock = state.blocks[state.currentBlockIndex]
+          const currentResponse = state.responses[currentBlock.id]
           
-          set({ 
-            currentBlockIndex: newIndex,
-            isCurrentBlockValid: false,
-            isLastBlock
-          })
-
-          // Verify state update
-          console.log('Updated State:', get())
+          // Clear file response if it exceeds size limit
+          if (currentBlock.type === 'fileUpload' && 
+              currentResponse && 
+              (currentResponse as File).size > (currentBlock.maxFileSize || 0)) {
+            set({ 
+              currentBlockIndex: newIndex,
+              isCurrentBlockValid: true,
+              isLastBlock: newIndex === state.blocks.length - 2,
+              responses: {
+                ...state.responses,
+                [currentBlock.id]: null
+              }
+            })
+          } else {
+            set({ 
+              currentBlockIndex: newIndex,
+              isCurrentBlockValid: true,
+              isLastBlock: newIndex === state.blocks.length - 2
+            })
+          }
         }
       },
 
@@ -103,10 +110,29 @@ export const useFormResponse = create<FormResponseState>()(
         const state = get()
         if (state.currentBlockIndex > 0) {
           const newIndex = state.currentBlockIndex - 1
-          set({ 
-            currentBlockIndex: newIndex,
-            isLastBlock: newIndex === state.blocks.length - 2
-          })
+          const currentBlock = state.blocks[state.currentBlockIndex]
+          const currentResponse = state.responses[currentBlock.id]
+          
+          // Clear file response if it exceeds size limit
+          if (currentBlock.type === 'fileUpload' && 
+              currentResponse && 
+              (currentResponse as File).size > (currentBlock.maxFileSize || 0)) {
+            set({ 
+              currentBlockIndex: newIndex,
+              isCurrentBlockValid: true,
+              isLastBlock: newIndex === state.blocks.length - 2,
+              responses: {
+                ...state.responses,
+                [currentBlock.id]: null
+              }
+            })
+          } else {
+            set({ 
+              currentBlockIndex: newIndex,
+              isCurrentBlockValid: true,
+              isLastBlock: newIndex === state.blocks.length - 2
+            })
+          }
         }
       },
 
@@ -174,24 +200,50 @@ export const useFormResponse = create<FormResponseState>()(
               break
 
             case 'phone':
-              const phoneRegex = /^\+?[\d\s-]{8,}$/
-              if (!phoneRegex.test(response as string)) {
-                set({ isCurrentBlockValid: false })
-                return { 
-                  isValid: false, 
-                  message: 'Please enter a valid phone number.'
+              const [country, number] = (response as string)?.split('-') || []
+              if (number) {
+                try {
+                  const isValid = isValidPhoneNumber(number, country as CountryCode)
+                  if (!isValid) {
+                    set({ isCurrentBlockValid: false })
+                    return { 
+                      isValid: false, 
+                      message: 'Please enter a valid phone number'
+                    }
+                  }
+                } catch {
+                  set({ isCurrentBlockValid: false })
+                  return { 
+                    isValid: false, 
+                    message: 'Please enter a valid phone number'
+                  }
                 }
               }
               break
 
             case 'url':
+              const urlString = (response as string).trim().toLowerCase()
+              
+              // Basic URL pattern
+              const urlPattern = /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w- .\/?%&=]*)?$/
+              
+              let isValidUrl = false
               try {
-                new URL(response as string)
+                // First check pattern
+                if (urlPattern.test(urlString)) {
+                  // Then try constructing URL
+                  new URL(urlString.startsWith('http') ? urlString : `https://${urlString}`)
+                  isValidUrl = true
+                }
               } catch {
+                isValidUrl = false
+              }
+              
+              if (!isValidUrl) {
                 set({ isCurrentBlockValid: false })
                 return { 
                   isValid: false, 
-                  message: 'Please enter a valid URL.'
+                  message: 'Please enter a valid URL'
                 }
               }
               break
@@ -234,7 +286,7 @@ export const useFormResponse = create<FormResponseState>()(
                 set({ isCurrentBlockValid: false })
                 return { 
                   isValid: false, 
-                  message: `File size exceeds maximum limit of ${currentBlock.maxFileSize}MB.`
+                  message: `File size exceeds maximum limit of ${currentBlock.maxFileSize / (1024 * 1024)}MB.`
                 }
               }
               break

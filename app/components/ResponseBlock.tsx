@@ -9,13 +9,14 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { AlertTriangle, ArrowRight, Calendar, Check } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import type { CountryCode } from 'libphonenumber-js'
+import { getCountries, getCountryCallingCode } from 'libphonenumber-js'
+import { AlertTriangle, ArrowRight, Calendar, Check, X } from 'lucide-react'
 
 interface ResponseBlockProps {
   block: FormBlock
   onNext: () => void
-  response?: string | string[] | File
+  response?: string | string[] | File | null
   onResponseChange?: (value: string | string[] | File) => void
   isValid: boolean
   validationMessage?: string
@@ -31,15 +32,8 @@ export function ResponseBlock({
   validationMessage,
   isLastBlock
 }: ResponseBlockProps) {
-  const phoneInputRef = useRef<HTMLInputElement>(null)
-  
-  useEffect(() => {
-    if (block.type === 'phone') {
-      phoneInputRef.current?.focus()
-    }
-  }, [block.type])
 
-  const showCmdEnterHint = ['longText', 'multiSelect', 'fileUpload'].includes(block.type)
+  const showCmdEnterHint = ['longText', 'dropdown', 'fileUpload'].includes(block.type)
 
   // Validation message component
   const ValidationMessage = () => (
@@ -87,6 +81,22 @@ export function ResponseBlock({
     )
   }
 
+  const QuestionTitle = ({ question, required }: { question: string, required?: boolean }) => (
+    <h2 className="text-2xl font-semibold">
+      {question}
+      {required && <span className="text-red-500 ml-1">*</span>}
+    </h2>
+  )
+
+  // Add this helper function at the top of the component
+  const getCountryFlag = (countryCode: string) => {
+    const codePoints = countryCode
+      .toUpperCase()
+      .split('')
+      .map(char => 127397 + char.charCodeAt(0))
+    return String.fromCodePoint(...codePoints)
+  }
+
   // Statement block
   if (block.type === 'statement') {
     return (
@@ -104,7 +114,7 @@ export function ResponseBlock({
   if (block.type === 'shortText') {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">{block.question}</h2>
+        <QuestionTitle question={block.question} required={block.required} />
         {block.description && (
           <p className="text-gray-600">{block.description}</p>
         )}
@@ -127,7 +137,7 @@ export function ResponseBlock({
   if (block.type === 'longText') {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">{block.question}</h2>
+        <QuestionTitle question={block.question} required={block.required} />
         {block.description && (
           <p className="text-gray-600">{block.description}</p>
         )}
@@ -150,7 +160,7 @@ export function ResponseBlock({
   if (block.type === 'singleSelect') {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">{block.question}</h2>
+        <QuestionTitle question={block.question} required={block.required} />
         {block.description && (
           <p className="text-gray-600">{block.description}</p>
         )}
@@ -188,7 +198,7 @@ export function ResponseBlock({
 
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">{block.question}</h2>
+        <QuestionTitle question={block.question} required={block.required} />
         {block.description && (
           <p className="text-gray-600">{block.description}</p>
         )}
@@ -216,7 +226,7 @@ export function ResponseBlock({
   if (block.type === 'email') {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">{block.question}</h2>
+        <QuestionTitle question={block.question} required={block.required} />
         {block.description && (
           <p className="text-gray-600">{block.description}</p>
         )}
@@ -239,7 +249,7 @@ export function ResponseBlock({
   if (block.type === 'number') {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">{block.question}</h2>
+        <QuestionTitle question={block.question} required={block.required} />
         {block.description && (
           <p className="text-gray-600">{block.description}</p>
         )}
@@ -262,21 +272,37 @@ export function ResponseBlock({
 
   // Phone input
   if (block.type === 'phone') {
+    const countries = getCountries()
+    
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">{block.question}</h2>
+        <QuestionTitle question={block.question} required={block.required} />
         {block.description && (
           <p className="text-gray-600">{block.description}</p>
         )}
         <div className="flex gap-2 items-center">
-          <select className="p-2 border rounded-md bg-white w-[100px]">
-            <option>🇮🇳 +91</option>
+          <select 
+            className="p-2 border rounded-md bg-white w-[120px]"
+            value={(response as string)?.split('-')[0] || 'IN'}
+            onChange={(e) => {
+              const number = (response as string)?.split('-')[1] || ''
+              onResponseChange?.(`${e.target.value}-${number}`)
+            }}
+          >
+            {countries.map((country) => (
+              <option key={country} value={country}>
+                {getCountryFlag(country)} +{getCountryCallingCode(country as CountryCode)}
+              </option>
+            ))}
           </select>
           <Input
-            ref={phoneInputRef}
+            autoFocus
             type="tel"
-            value={response as string}
-            onChange={(e) => onResponseChange?.(e.target.value)}
+            value={(response as string)?.split('-')[1] || ''}
+            onChange={(e) => {
+              const country = (response as string)?.split('-')[0] || 'IN'
+              onResponseChange?.(`${country}-${e.target.value}`)
+            }}
             placeholder={block.placeholder || "Phone number"}
             required={block.required}
             className="flex-1"
@@ -292,7 +318,7 @@ export function ResponseBlock({
   if (block.type === 'url') {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">{block.question}</h2>
+        <QuestionTitle question={block.question} required={block.required} />
         {block.description && (
           <p className="text-gray-600">{block.description}</p>
         )}
@@ -315,7 +341,7 @@ export function ResponseBlock({
   if (block.type === 'dropdown') {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">{block.question}</h2>
+        <QuestionTitle question={block.question} required={block.required} />
         {block.description && (
           <p className="text-gray-600">{block.description}</p>
         )}
@@ -344,7 +370,7 @@ export function ResponseBlock({
   if (block.type === 'date') {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">{block.question}</h2>
+        <QuestionTitle question={block.question} required={block.required} />
         {block.description && (
           <p className="text-gray-600">{block.description}</p>
         )}
@@ -368,7 +394,7 @@ export function ResponseBlock({
     const maxSizeMB = ((block.maxFileSize || 0) / (1024 * 1024)).toFixed(0)
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">{block.question}</h2>
+        <QuestionTitle question={block.question} required={block.required} />
         {block.description && (
           <p className="text-gray-600">{block.description}</p>
         )}
@@ -383,9 +409,31 @@ export function ResponseBlock({
             id="file-upload"
           />
           <label htmlFor="file-upload" className="cursor-pointer">
-            <p className="text-gray-500">
-              {response ? `Selected: ${(response as unknown as File).name}` : 'Drag and drop a file here, or click to select'}
-            </p>
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-gray-500">
+                {response && (response as File).size <= (block.maxFileSize || 0)
+                  ? (
+                    <span className="flex items-center gap-2">
+                      Selected: {(response as File).name}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          const fileInput = document.getElementById('file-upload') as HTMLInputElement
+                          if (fileInput) fileInput.value = ''
+                          onResponseChange?.(null as unknown as File)
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                      >
+                        <X className="h-4 w-4 text-gray-500" />
+                      </button>
+                    </span>
+                  )
+                  : 'Drag and drop a file here, or click to select'
+                }
+              </p>
+            </div>
             <p className="text-sm text-gray-400 mt-1">
               Maximum file size: {maxSizeMB} MB
             </p>
@@ -400,7 +448,7 @@ export function ResponseBlock({
   // Default block layout
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold">{block.question}</h2>
+      <QuestionTitle question={block.question} required={block.required} />
       {block.description && (
         <p className="text-gray-600">{block.description}</p>
       )}

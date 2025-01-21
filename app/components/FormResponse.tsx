@@ -48,16 +48,41 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
     // Don't allow navigation on thankYou blocks
     if (currentBlock?.isSpecial === 'thankYou') return
 
-    if (e.key === 'Enter' && !e.shiftKey) {
-      if (document.activeElement?.tagName === 'TEXTAREA') return
-      if (validateCurrentBlock()) {
-        goToNextBlock()
+    // Don't allow arrow navigation on longText and number blocks
+    const preventArrowNavigation = ['longText', 'number'].includes(currentBlock?.type || '')
+    
+    const showCmdEnterHint = ['longText', 'multiSelect', 'fileUpload'].includes(currentBlock?.type || '')
+    
+    if (e.key === 'Enter') {
+      // For blocks requiring Cmd+Enter
+      if (showCmdEnterHint) {
+        if (e.metaKey || e.ctrlKey) {
+          const validationResult = validateCurrentBlock()
+          setValidationMessage(validationResult.message)
+          if (validationResult.isValid) {
+            goToNextBlock()
+          }
+        }
+        return
       }
-    } else if (e.key === 'ArrowUp') {
-      goToPreviousBlock()
-    } else if (e.key === 'ArrowDown' && !isLastBlock) {
-      if (validateCurrentBlock()) {
-        goToNextBlock()
+
+      // For other blocks, proceed with normal Enter key
+      if (!e.shiftKey && document.activeElement?.tagName !== 'TEXTAREA') {
+        const validationResult = validateCurrentBlock()
+        setValidationMessage(validationResult.message)
+        if (validationResult.isValid) {
+          goToNextBlock()
+        }
+      }
+    } else if (!preventArrowNavigation) {
+      if (e.key === 'ArrowUp') {
+        goToPreviousBlock()
+      } else if (e.key === 'ArrowDown' && !isLastBlock) {
+        const validationResult = validateCurrentBlock()
+        setValidationMessage(validationResult.message)
+        if (validationResult.isValid) {
+          goToNextBlock()
+        }
       }
     }
   }, [goToNextBlock, goToPreviousBlock, validateCurrentBlock, currentBlock, isLastBlock])
@@ -76,13 +101,11 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
 
   // Handle navigation to next block
   const handleNext = () => {
-    console.log('Attempting to go to next block:', {
-      isValid: isCurrentBlockValid,
-      currentBlock,
-      currentResponse: currentBlock ? responses[currentBlock.id] : null
-    })
+    console.log('Attempting to go to next block')
+    const validationResult = validateCurrentBlock()
+    setValidationMessage(validationResult.message)
     
-    if (validateCurrentBlock()) {
+    if (validationResult.isValid) {
       goToNextBlock()
     }
   }
