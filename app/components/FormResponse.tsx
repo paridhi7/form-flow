@@ -20,8 +20,8 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
     formId: currentFormId,
     goToNextBlock,
     goToPreviousBlock,
-    progress,
     currentBlockIndex,
+    blocks,
     validateCurrentBlock,
     isCurrentBlockValid,
     setResponse,
@@ -118,6 +118,9 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
     return result.isValid
   }
 
+  // Calculate progress based on current block index and total blocks
+  const progress = blocks.length > 1 ? currentBlockIndex / (blocks.length - 1) : 0
+
   if (!isClient) {
     return null // Return null on server-side
   }
@@ -126,7 +129,7 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
     <div className="min-h-screen flex flex-col">
       {/* Progress bar */}
       <div className="fixed top-0 left-0 right-0 z-50">
-        <Progress value={progress * 100} className="rounded-none" />
+        <Progress value={progress * 100} className="rounded-none h-1" />
       </div>
 
       {/* Main content */}
