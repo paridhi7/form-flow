@@ -51,7 +51,7 @@ export function FormResponse({ formId, initialBlocks }: FormResponseProps) {
     // Don't allow arrow navigation on longText and number blocks
     const preventArrowNavigation = ['longText', 'number', 'phone'].includes(currentBlock?.type || '')
     
-    const showCmdEnterHint = ['longText', 'multiSelect', 'phone', 'fileUpload'].includes(currentBlock?.type || '')
+    const showCmdEnterHint = ['longText', 'dropdown', 'phone', 'fileUpload'].includes(currentBlock?.type || '')
     
     if (e.key === 'Enter') {
       // For blocks requiring Cmd+Enter
